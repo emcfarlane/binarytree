@@ -1,3 +1,3 @@
-# Go BinaryTree Benchmark
+# binarytree
 
-Example of go binary tree benchmark using sync.Pool.
+Example of a go binary tree using sync.Pool.
