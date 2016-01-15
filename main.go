@@ -63,11 +63,13 @@ func main() {
 		},
 	}
 
-	stretchTree := &Node{}
-	stretchTree.createTree(pool, 0, maxDepth+1)
+	{
+		stretchTree := &Node{}
+		stretchTree.createTree(pool, 0, maxDepth+1)
 
-	fmt.Printf("stretch tree of depth %d\t check: %d\n", maxDepth+1, stretchTree.computeTreeChecksum())
-	pool.Put(stretchTree)
+		fmt.Printf("stretch tree of depth %d\t check: %d\n", maxDepth+1, stretchTree.computeTreeChecksum())
+		pool.Put(stretchTree)
+	}
 
 	longLivedTree := pool.Get().(*Node)
 	longLivedTree.createTree(pool, 0, maxDepth)
