@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
-	"time"
 )
 
 type Node struct {
@@ -43,8 +42,6 @@ func (root *Node) computeTreeChecksum() int {
 }
 
 func main() {
-	start := time.Now()
-
 	flag.Parse()
 	n, err := strconv.Atoi(flag.Arg(0))
 	if err != nil {
@@ -123,5 +120,4 @@ func main() {
 	}
 
 	fmt.Printf("long lived tree of depth %d\t check: %d\n", maxDepth, longLivedTree.computeTreeChecksum())
-	fmt.Printf("%v\n", time.Now().Sub(start))
 }
