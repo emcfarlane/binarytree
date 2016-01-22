@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
 	"strconv"
 	"sync"
 )
@@ -14,21 +13,18 @@ type Node struct {
 	value       int
 }
 
-func (root *Node) createTree(pool *sync.Pool, rootNodeValue, treeDepth int) {
+func (root *Node) createTree(rootNodeValue, treeDepth int) {
 	root.value = rootNodeValue
 
 	if treeDepth > 0 {
 		if root.left == nil {
-			root.left = pool.Get().(*Node)
-			root.right = pool.Get().(*Node)
+			root.left = &Node{}
+			root.right = &Node{}
 		}
-
-		root.left.createTree(pool, 2*rootNodeValue-1, treeDepth-1)
-		root.right.createTree(pool, 2*rootNodeValue, treeDepth-1)
+		root.left.createTree(2*rootNodeValue-1, treeDepth-1)
+		root.right.createTree(2*rootNodeValue, treeDepth-1)
 
 	} else if root.left != nil {
-		pool.Put(root.left)
-		pool.Put(root.right)
 		root.left = nil
 		root.right = nil
 	}
@@ -54,70 +50,42 @@ func main() {
 		maxDepth = minDepth + 2
 	}
 
-	var pool = &sync.Pool{
-		New: func() interface{} {
-			return &Node{}
-		},
-	}
+	var wg = &sync.WaitGroup{}
+	buf := make([]string, maxDepth+2)
 
-	{
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
 		stretchTree := &Node{}
-		stretchTree.createTree(pool, 0, maxDepth+1)
+		stretchTree.createTree(0, maxDepth+1)
+		buf[maxDepth+1] = fmt.Sprintf("stretch tree of depth %d\t check: %d\n", maxDepth+1, stretchTree.computeTreeChecksum())
+	}()
 
-		fmt.Printf("stretch tree of depth %d\t check: %d\n", maxDepth+1, stretchTree.computeTreeChecksum())
-		pool.Put(stretchTree)
-	}
+	longLivedTree := &Node{}
+	longLivedTree.createTree(0, maxDepth)
 
-	longLivedTree := pool.Get().(*Node)
-	longLivedTree.createTree(pool, 0, maxDepth)
-
-	var wg sync.WaitGroup
-	work := make(chan int, 2)
-	buf := make([]string, maxDepth+1)
-	cpus := runtime.NumCPU()
-
-	wg.Add(cpus)
-	for i := 0; i < cpus; i++ {
-		go func() {
+	for d := minDepth; d <= maxDepth; d += 2 {
+		wg.Add(1)
+		go func(depth, iterations int) {
 			defer wg.Done()
 
-			var ok bool
-			var depth, iterations, check, i int
-
-			treeRoot := pool.Get().(*Node)
-			defer pool.Put(treeRoot)
-
-			for {
-				depth, ok = <-work
-				if !ok {
-					return
-				}
-
-				iterations = 1 << uint(maxDepth-depth+minDepth)
-
-				check = 0
-				for i = 0; i < iterations; i++ {
-					treeRoot.createTree(pool, i, depth)
-					check += treeRoot.computeTreeChecksum()
-					treeRoot.createTree(pool, -i, depth)
-					check += treeRoot.computeTreeChecksum()
-				}
-
-				buf[depth] = fmt.Sprintf("%d\t trees of depth %d\t check: %d\n", iterations*2, depth, check)
+			treeRoot := &Node{}
+			var check int
+			for i := 0; i < iterations; i++ {
+				treeRoot.createTree(i, depth)
+				check += treeRoot.computeTreeChecksum()
+				treeRoot.createTree(-i, depth)
+				check += treeRoot.computeTreeChecksum()
 			}
-		}()
+			buf[depth] = fmt.Sprintf("%d\t trees of depth %d\t check: %d\n", iterations*2, depth, check)
+		}(d, 1<<uint(maxDepth-d+minDepth))
 	}
-
-	for depth := minDepth; depth <= maxDepth; depth += 2 {
-		work <- depth
-	}
-
-	close(work)
 	wg.Wait()
 
+	fmt.Print(buf[maxDepth+1])
 	for depth := minDepth; depth <= maxDepth; depth += 2 {
 		fmt.Print(buf[depth])
 	}
-
 	fmt.Printf("long lived tree of depth %d\t check: %d\n", maxDepth, longLivedTree.computeTreeChecksum())
 }
