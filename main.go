@@ -57,10 +57,12 @@ func main() {
 
 	stretchTree := &Node{}
 	stretchTree.growTree(maxDepth + 1)
+	stretchTree.populateTree(0)
 	fmt.Printf("stretch tree of depth %d\t check: %d\n", maxDepth+1, stretchTree.computeTreeChecksum())
 
 	longLivedTree := stretchTree
 	longLivedTree.growTree(maxDepth)
+	stretchTree.populateTree(0)
 
 	var wg = &sync.WaitGroup{}
 	buf := make([]string, maxDepth+1)
